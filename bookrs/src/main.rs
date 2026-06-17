@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use toml::de::from_str;
 
@@ -18,6 +19,19 @@ struct Rooms {
     count: u32,
 }
 
+#[derive(Clone, Debug)]
+struct HotelRoom {
+    room_type: String,
+    room_number: u32,
+    available: bool,
+}
+
+#[derive(Clone, Debug)]
+struct BookingCalendar {
+    // This is rough, but the rough goal is to have a lookup of date -> room_number -> availability
+    calendar: HashMap<String, HashMap<String, HotelRoom>>,
+}
+
 fn load_hotel() -> Config {
     // Load config from file
     let file = fs::read_to_string("src/config/hotel.toml").expect("Could not open file");
@@ -25,7 +39,42 @@ fn load_hotel() -> Config {
     hotel_config
 }
 
+fn setup_calendar(config: Config) -> BookingCalendar {
+    let mut room_number: u32 = 0;
+    let mut empty_hotel = HashMap::new();
+    for room in config.hotel.rooms {
+        for room_counter in 0..room.count {
+            let empty_room: HotelRoom = HotelRoom {
+                room_type: room.room_type.clone(),
+                room_number: room_number,
+                available: true,
+            };
+            room_number += 1;
+
+            empty_hotel.insert(room_number.to_string(), empty_room);
+        }
+    }
+
+    let mut calendar = HashMap::new();
+
+    for day_number in 0..30 {
+        calendar.insert(day_number.to_string(), empty_hotel.clone());
+    }
+
+    BookingCalendar { calendar: calendar }
+}
+
 fn main() {
     let config = load_hotel();
     println!("{:?}", config);
+    let calendar = setup_calendar(config);
+    println!("{:?}", calendar);
+
+    // For a basic first example, let's pursue the following:
+    // 1. Implement some kind of booking calendar. Will need to determine a data structure.
+    // 2. Take user input, attempt to assign a room
+    // 3. If a room cannot be assigned, inform the user.
+    // 4. If a room can be assigned, ask the user to confirm.
+    // 5. After these basic pieces are implemented, take a step back and design an MVP system as well
+    //    as what a north star system would look like.
 }
