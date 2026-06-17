@@ -44,7 +44,7 @@ fn setup_calendar(config: Config) -> BookingCalendar {
     let mut empty_hotel = HashMap::new();
     for room in config.hotel.rooms {
         for room_counter in 0..room.count {
-            let empty_room: HotelRoom = HotelRoom {
+            let mut empty_room: HotelRoom = HotelRoom {
                 room_type: room.room_type.clone(),
                 room_number: room_number,
                 available: true,
@@ -67,8 +67,39 @@ fn setup_calendar(config: Config) -> BookingCalendar {
 fn main() {
     let config = load_hotel();
     println!("{:?}", config);
-    let calendar = setup_calendar(config);
-    println!("{:?}", calendar);
+    let mut calendar = setup_calendar(config);
+    println!("{:?}", &calendar);
+    // Spot check availability of room 3 on day 2:
+    println!(
+        "{:?}",
+        &calendar
+            .calendar
+            .get_mut("2")
+            .unwrap()
+            .get_mut("3")
+            .unwrap()
+            .available
+    );
+
+    calendar
+            .calendar
+            .get_mut("2")
+            .unwrap()
+            .get_mut("3")
+            .unwrap()
+            .available = false;
+
+    // Spot check availability of room 3 on day 2 after assignment
+    println!(
+        "{:?}",
+        &calendar
+            .calendar
+            .get_mut("2")
+            .unwrap()
+            .get_mut("3")
+            .unwrap()
+            .available
+    );
 
     // For a basic first example, let's pursue the following:
     // 1. Implement some kind of booking calendar. Will need to determine a data structure.
