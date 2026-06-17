@@ -73,6 +73,7 @@ fn main() {
     // For a basic first example, let's pursue the following:
     // 1. Implement some kind of booking calendar. Will need to determine a data structure.
     // 2. Take user input, attempt to assign a room
+    // 2. a. Will need to ask for a day number for start, number of days. MVP is one room at a time.
     // 3. If a room cannot be assigned, inform the user.
     // 4. If a room can be assigned, ask the user to confirm.
     // 5. After these basic pieces are implemented, take a step back and design an MVP system as well
