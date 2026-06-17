@@ -1,0 +1,7 @@
+hotel:
+  name: The Inn
+  rooms:
+    - type: King
+      count: 10
+    - type: Queen
+      count: 10 
