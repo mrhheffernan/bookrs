@@ -1,0 +1,10 @@
+[hotel]
+name = "The Inn"
+
+  [[hotel.rooms]]
+  room_type = "King"
+  count = 10
+
+  [[hotel.rooms]]
+  room_type = "Queen"
+  count = 10
