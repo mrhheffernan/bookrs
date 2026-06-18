@@ -26,7 +26,8 @@ In order of importance:
     - Database: This will probably be sqlite to support an MVP, would migrate it to Postgres for something more performant/scalable.
 3. Expansion
     - Add a room rebalancer
-    - 
+    - Implement the REST API architecture if a TUI was implemented to start
+    - Add room management functions, e.g. check-in: A guest cannot check in if the room is not ready. There should be a separate API endpoint for marking a room as ready, so cleaning staff can indicate which rooms are available as they go.
 
 
 ### Requirements
