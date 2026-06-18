@@ -21,7 +21,7 @@ In order of importance:
   - This is the initial phase to build a series of dummy pieces so the underlying functionality is present in a basic form.
 2. MVP
   - This is where the actual pieces of a meaningful, designed system take place.
-  - Frontend: Probably a javascript-based frontend for interacting with a calendar, a dropdown menu for enum values for room type, etc.
+  - Frontend: Probably a javascript-based frontend for interacting with a calendar, a dropdown menu for enum values for room type, etc. The first version of this may be a TUI, because I want to get experience with ratatui and building TUIs instead of making an llm write typescript.
   - Backend: a REST API should be sufficient to handle the backend of the web interface. This takes the basics from the proof of concept and stores the hotel state for any given day in a SQL database and provides functionality for querying, making a booking, and returning results to the frontend.
     - Database: This will probably be sqlite to support an MVP, would migrate it to Postgres for something more performant/scalable.
 
