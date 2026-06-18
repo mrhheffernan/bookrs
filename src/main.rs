@@ -112,26 +112,28 @@ fn main() {
     // 5. After these basic pieces are implemented, take a step back and design an MVP system as well
     //    as what a north star system would look like.
 
-    println!("Starting day?");
-    let mut start_day = String::new();
-    let stdin = io::stdin();
-    let _ = stdin.read_line(&mut start_day);
+    while true {
+        println!("Starting day?");
+        let mut start_day = String::new();
+        let stdin = io::stdin();
+        let _ = stdin.read_line(&mut start_day);
 
-    println!("Number of days?");
-    let mut n_day = String::new();
-    let stdin = io::stdin();
-    let _ = stdin.read_line(&mut n_day);
+        println!("Number of days?");
+        let mut n_day = String::new();
+        let stdin = io::stdin();
+        let _ = stdin.read_line(&mut n_day);
 
-    println!("Room type?");
-    let mut room_type_str = String::new();
-    let stdin = io::stdin();
-    let _ = stdin.read_line(&mut room_type_str);
-    // todo: Add validation of room type against the config, or rather present some options in this prompt.
+        println!("Room type?");
+        let mut room_type_str = String::new();
+        let stdin = io::stdin();
+        let _ = stdin.read_line(&mut room_type_str);
+        // todo: Add validation of room type against the config, or rather present some options in this prompt.
 
-    println!(
-        "Searching for {} room for {} days beginning on day {}",
-        room_type_str.trim_end(),
-        n_day.trim_end(),
-        start_day.trim_end()
-    )
+        println!(
+            "Searching for {} room for {} days beginning on day {}",
+            room_type_str.trim_end(),
+            n_day.trim_end(),
+            start_day.trim_end()
+        )
+    }
 }
