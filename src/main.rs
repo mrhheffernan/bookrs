@@ -139,50 +139,7 @@ fn search_rooms(
 
 fn main() {
     let config = load_hotel();
-    // println!("{:?}", config);
     let mut calendar = setup_calendar(config);
-    // println!("{:?}", &calendar);
-    // // Spot check availability of room 3 on day 2:
-    // println!(
-    //     "{:?}",
-    //     &calendar
-    //         .calendar
-    //         .get_mut("2")
-    //         .unwrap()
-    //         .get_mut("3")
-    //         .unwrap()
-    //         .available
-    // );
-
-    // Example assignment
-    calendar
-        .calendar
-        .get_mut("2")
-        .unwrap()
-        .get_mut("3")
-        .unwrap()
-        .available = false;
-
-    // // Spot check availability of room 3 on day 2 after assignment
-    // println!(
-    //     "{:?}",
-    //     &calendar
-    //         .calendar
-    //         .get_mut("2")
-    //         .unwrap()
-    //         .get_mut("3")
-    //         .unwrap()
-    //         .available
-    // );
-
-    // For a basic first example, let's pursue the following:
-    // 1. Implement some kind of booking calendar. Will need to determine a data structure.
-    // 2. Take user input, attempt to assign a room
-    // 2. a. Will need to ask for a day number for start, number of days. MVP is one room at a time.
-    // 3. If a room cannot be assigned, inform the user.
-    // 4. If a room can be assigned, ask the user to confirm.
-    // 5. After these basic pieces are implemented, take a step back and design an MVP system as well
-    //    as what a north star system would look like.
 
     loop {
         println!("Starting day?");
@@ -215,6 +172,10 @@ fn main() {
         let available_rooms =
             search_rooms(&mut calendar, &room_type_str, &start_day_int, &n_day_int);
 
+        if available_rooms.len() == 0 {
+            println! {"No room can be assigned, try a different search"}
+            continue;
+        }
         let selected_room = available_rooms.iter().next().unwrap();
         println!("Available rooms are {:?}", available_rooms);
         println!("Selected room {}", selected_room);
