@@ -82,12 +82,12 @@ fn main() {
     );
 
     calendar
-            .calendar
-            .get_mut("2")
-            .unwrap()
-            .get_mut("3")
-            .unwrap()
-            .available = false;
+        .calendar
+        .get_mut("2")
+        .unwrap()
+        .get_mut("3")
+        .unwrap()
+        .available = false;
 
     // Spot check availability of room 3 on day 2 after assignment
     println!(
