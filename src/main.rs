@@ -29,7 +29,7 @@ struct HotelRoom {
 
 #[derive(Clone, Debug)]
 struct BookingCalendar {
-    // This is rough, but the rough goal is to have a lookup of date -> room_number -> availability
+    // This is an MVP, but the rough goal is to have a lookup of date -> room_number -> availability
     calendar: HashMap<String, HashMap<String, HotelRoom>>,
 }
 
@@ -98,6 +98,8 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
 
         assert!(!room_available_after);
     }
+
+    // TODO: Add things like a booking ID to the room, to come in the sqlite database implementation
 }
 
 fn search_rooms(
@@ -137,48 +139,63 @@ fn search_rooms(
     available_rooms
 }
 
+fn select_room(available_rooms: HashSet<String>) -> &String {
+    // Randomly select an available room; randomness comes from the HashSet having no default ordering
+    let selected_room = available_rooms.iter().next().unwrap();
+    selected_room
+}
+
+fn read_inputs() -> (u32, u32, String) {
+    println!("Starting day?");
+    let mut start_day = String::new();
+    let stdin = io::stdin();
+    let _ = stdin.read_line(&mut start_day);
+
+    println!("Number of days?");
+    let mut n_day = String::new();
+    let stdin = io::stdin();
+    let _ = stdin.read_line(&mut n_day);
+
+    println!("Room type?");
+    let mut room_type_str = String::new();
+    let stdin = io::stdin();
+    let _ = stdin.read_line(&mut room_type_str);
+    room_type_str = room_type_str.trim_end().to_string();
+    // TODO: Add validation of room type against the config, or rather present some options in this prompt
+    // so a user cannot mistype a room type string
+
+    let start_day_int = start_day.trim_end().parse::<u32>().unwrap();
+    let n_day_int = n_day.trim_end().parse::<u32>().unwrap();
+
+    (start_day_int, n_day_int, room_type_str)
+}
+
 fn main() {
     let config = load_hotel();
     let mut calendar = setup_calendar(config);
 
     loop {
-        println!("Starting day?");
-        let mut start_day = String::new();
-        let stdin = io::stdin();
-        let _ = stdin.read_line(&mut start_day);
-
-        println!("Number of days?");
-        let mut n_day = String::new();
-        let stdin = io::stdin();
-        let _ = stdin.read_line(&mut n_day);
-
-        println!("Room type?");
-        let mut room_type_str = String::new();
-        let stdin = io::stdin();
-        let _ = stdin.read_line(&mut room_type_str);
-        room_type_str = room_type_str.trim_end().to_string();
-        // todo: Add validation of room type against the config, or rather present some options in this prompt.
-
+        // Take in user search
+        let (start_day_int, n_day_int, room_type_str) = read_inputs();
         println!(
             "Searching for {} room for {} days beginning on day {}",
-            room_type_str.trim_end(),
-            n_day.trim_end(),
-            start_day.trim_end()
+            room_type_str, n_day_int, start_day_int
         );
 
-        let start_day_int = start_day.trim_end().parse::<u32>().unwrap();
-        let n_day_int = n_day.trim_end().parse::<u32>().unwrap();
-
+        // Identify available rooms matching that constraint
         let available_rooms =
             search_rooms(&mut calendar, &room_type_str, &start_day_int, &n_day_int);
-
         if available_rooms.len() == 0 {
             println! {"No room can be assigned, try a different search"}
             continue;
         }
-        let selected_room = available_rooms.iter().next().unwrap();
         println!("Available rooms are {:?}", available_rooms);
+
+        // Select a room
+        let selected_room = select_room(available_rooms);
         println!("Selected room {}", selected_room);
+
+        // Update the calendar to make the selected room unavailable
         allocate_room(
             &mut calendar,
             &selected_room.parse::<u32>().unwrap(),
