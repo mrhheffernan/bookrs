@@ -47,7 +47,7 @@ fn setup_calendar(config: Config) -> BookingCalendar {
         for _room_counter in 0..room.count {
             let empty_room: HotelRoom = HotelRoom {
                 room_type: room.room_type.clone(),
-                room_number: room_number,
+                room_number,
                 available: true,
             };
             empty_hotel.insert(room_number, empty_room);
@@ -73,7 +73,7 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
             .calendar
             .get_mut(&day)
             .unwrap()
-            .get_mut(&room_number)
+            .get_mut(room_number)
             .unwrap()
             .available;
 
@@ -83,7 +83,7 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
             .calendar
             .get_mut(&day)
             .unwrap()
-            .get_mut(&room_number)
+            .get_mut(room_number)
             .unwrap()
             .available = false;
 
@@ -91,7 +91,7 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
             .calendar
             .get_mut(&day)
             .unwrap()
-            .get_mut(&room_number)
+            .get_mut(room_number)
             .unwrap()
             .available;
 
@@ -111,7 +111,7 @@ fn search_rooms(
 
     let mut available_rooms = HashSet::new();
     // initialize available rooms with all possible room ids
-    for room_number in calendar.calendar.get(&start_day).unwrap().keys() {
+    for room_number in calendar.calendar.get(start_day).unwrap().keys() {
         available_rooms.insert(*room_number);
     }
 
@@ -179,7 +179,7 @@ fn main() {
         // Identify available rooms matching that constraint
         let available_rooms =
             search_rooms(&mut calendar, &room_type_str, &start_day_int, &n_day_int);
-        if available_rooms.len() == 0 {
+        if available_rooms.is_empty() {
             println! {"No room can be assigned, try a different search"}
             continue;
         }
