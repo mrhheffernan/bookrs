@@ -30,7 +30,7 @@ struct HotelRoom {
 #[derive(Clone, Debug)]
 struct BookingCalendar {
     // This is an MVP, but the rough goal is to have a lookup of date -> room_number -> availability
-    calendar: HashMap<String, HashMap<String, HotelRoom>>,
+    calendar: HashMap<u32, HashMap<u32, HotelRoom>>,
 }
 
 fn load_hotel() -> Config {
@@ -50,7 +50,7 @@ fn setup_calendar(config: Config) -> BookingCalendar {
                 room_number: room_number,
                 available: true,
             };
-            empty_hotel.insert(room_number.to_string(), empty_room);
+            empty_hotel.insert(room_number, empty_room);
             room_number += 1;
         }
     }
@@ -58,7 +58,7 @@ fn setup_calendar(config: Config) -> BookingCalendar {
     let mut calendar = HashMap::new();
 
     for day_number in 0..30 {
-        calendar.insert(day_number.to_string(), empty_hotel.clone());
+        calendar.insert(day_number, empty_hotel.clone());
     }
 
     BookingCalendar { calendar }
@@ -71,9 +71,9 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
         // Before each booking, assert that the room is available
         let room_available: bool = calendar
             .calendar
-            .get_mut(&day.to_string())
+            .get_mut(&day)
             .unwrap()
-            .get_mut(&room_number.to_string())
+            .get_mut(&room_number)
             .unwrap()
             .available;
 
@@ -81,17 +81,17 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
 
         calendar
             .calendar
-            .get_mut(&day.to_string())
+            .get_mut(&day)
             .unwrap()
-            .get_mut(&room_number.to_string())
+            .get_mut(&room_number)
             .unwrap()
             .available = false;
 
         let room_available_after: bool = calendar
             .calendar
-            .get_mut(&day.to_string())
+            .get_mut(&day)
             .unwrap()
-            .get_mut(&room_number.to_string())
+            .get_mut(&room_number)
             .unwrap()
             .available;
 
@@ -106,28 +106,23 @@ fn search_rooms(
     room_type: &String,
     start_day: &u32,
     n_days: &u32,
-) -> HashSet<String> {
+) -> HashSet<u32> {
     let end_day = start_day + n_days; // will need actual datetime handling in the future
 
     let mut available_rooms = HashSet::new();
     // initialize available rooms with all possible room ids
-    for room_number in calendar
-        .calendar
-        .get(&start_day.to_string())
-        .unwrap()
-        .keys()
-    {
-        available_rooms.insert(room_number.to_string());
+    for room_number in calendar.calendar.get(&start_day).unwrap().keys() {
+        available_rooms.insert(*room_number);
     }
 
     for day in *start_day..end_day {
-        let rooms_to_check = calendar.calendar.get_mut(&day.to_string()).unwrap();
+        let rooms_to_check = calendar.calendar.get_mut(&day).unwrap();
         let mut day_available_rooms = HashSet::new();
         for key in rooms_to_check.keys() {
             let room_to_check = rooms_to_check.get(key).unwrap();
 
             if room_to_check.available && room_to_check.room_type == *room_type {
-                day_available_rooms.insert(key.to_string());
+                day_available_rooms.insert(*key);
             }
         }
         available_rooms = available_rooms
@@ -138,10 +133,10 @@ fn search_rooms(
     available_rooms
 }
 
-fn select_room(available_rooms: HashSet<String>) -> &String {
-    // Randomly select an available room; randomness comes from the HashSet having no default ordering
+fn select_room(available_rooms: &HashSet<u32>) -> u32 {
+    // Randomly select an available room; really uses "arbitrary order" (see HashSet docs) as a sub for randomness.
     let selected_room = available_rooms.iter().next().unwrap();
-    selected_room
+    *selected_room
 }
 
 fn read_inputs() -> (u32, u32, String) {
@@ -191,15 +186,10 @@ fn main() {
         println!("Available rooms are {:?}", available_rooms);
 
         // Select a room
-        let selected_room = select_room(available_rooms);
+        let selected_room = select_room(&available_rooms);
         println!("Selected room {}", selected_room);
 
         // Update the calendar to make the selected room unavailable
-        allocate_room(
-            &mut calendar,
-            &selected_room.parse::<u32>().unwrap(),
-            &start_day_int,
-            &n_day_int,
-        );
+        allocate_room(&mut calendar, &selected_room, &start_day_int, &n_day_int);
     }
 }
