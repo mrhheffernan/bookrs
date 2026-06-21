@@ -22,7 +22,7 @@ struct RoomConfig {
 #[derive(Clone, Debug)]
 struct HotelRoom {
     room_type: String,
-    room_number: u32,
+    // room_number: u32, // This is more a field needed in a db version, not here.
     available: bool,
 }
 
@@ -40,7 +40,6 @@ impl BookingCalendar {
             for _ in 0..room.count {
                 let empty_room: HotelRoom = HotelRoom {
                     room_type: room.room_type.clone(),
-                    room_number,
                     available: true,
                 };
                 empty_hotel.insert(room_number, empty_room);
@@ -168,6 +167,7 @@ fn read_inputs() -> (u32, u32, String) {
 
 fn main() {
     let config = load_hotel();
+    println!("Welcome to {}", config.hotel.name);
     let mut calendar = BookingCalendar::new(config);
 
     loop {
