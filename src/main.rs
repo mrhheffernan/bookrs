@@ -105,7 +105,7 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
 }
 
 fn search_rooms(
-    calendar: &mut BookingCalendar,
+    calendar: &BookingCalendar,
     room_type: &str,
     start_day: &u32,
     n_days: &u32,
@@ -119,7 +119,7 @@ fn search_rooms(
     }
 
     for day in *start_day..end_day {
-        let rooms_to_check = calendar.calendar.get_mut(&day).unwrap();
+        let rooms_to_check = calendar.calendar.get(&day).unwrap();
         let mut day_available_rooms = HashSet::new();
         for key in rooms_to_check.keys() {
             let room_to_check = rooms_to_check.get(key).unwrap();
@@ -178,8 +178,7 @@ fn main() {
         );
 
         // Identify available rooms matching that constraint
-        let available_rooms =
-            search_rooms(&mut calendar, &room_type_str, &start_day_int, &n_day_int);
+        let available_rooms = search_rooms(&calendar, &room_type_str, &start_day_int, &n_day_int);
         if available_rooms.is_empty() {
             println! {"No room can be assigned, try a different search"}
             continue;
