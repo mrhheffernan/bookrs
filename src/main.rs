@@ -44,7 +44,7 @@ fn setup_calendar(config: Config) -> BookingCalendar {
     let mut room_number: u32 = 0;
     let mut empty_hotel = HashMap::new();
     for room in config.hotel.rooms {
-        for room_counter in 0..room.count {
+        for _room_counter in 0..room.count {
             let empty_room: HotelRoom = HotelRoom {
                 room_type: room.room_type.clone(),
                 room_number: room_number,
@@ -103,7 +103,7 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
 
 fn search_rooms(
     calendar: &mut BookingCalendar,
-    room_type: &String,
+    room_type: &str,
     start_day: &u32,
     n_days: &u32,
 ) -> HashSet<u32> {
