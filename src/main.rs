@@ -77,7 +77,7 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
             .unwrap()
             .available;
 
-        assert!(room_available);
+        assert!(room_available, "Room to allocate must be available");
 
         calendar
             .calendar
@@ -95,7 +95,10 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
             .unwrap()
             .available;
 
-        assert!(!room_available_after);
+        assert!(
+            !room_available_after,
+            "Allocated room must no longer be available"
+        );
     }
 
     // TODO: Add things like a booking ID to the room, to come in the sqlite database implementation
@@ -134,7 +137,7 @@ fn search_rooms(
 }
 
 fn select_room(available_rooms: &HashSet<u32>) -> u32 {
-    // Randomly select an available room; really uses "arbitrary order" (see HashSet docs) as a sub for randomness.
+    // Choose an available room; really uses "arbitrary order" (see HashSet docs) as a sub for randomness.
     let selected_room = available_rooms.iter().next().unwrap();
     *selected_room
 }
@@ -147,12 +150,10 @@ fn read_inputs() -> (u32, u32, String) {
 
     println!("Number of days?");
     let mut n_day = String::new();
-    let stdin = io::stdin();
     let _ = stdin.read_line(&mut n_day);
 
     println!("Room type?");
     let mut room_type_str = String::new();
-    let stdin = io::stdin();
     let _ = stdin.read_line(&mut room_type_str);
     room_type_str = room_type_str.trim_end().to_string();
     // TODO: Add validation of room type against the config, or rather present some options in this prompt
