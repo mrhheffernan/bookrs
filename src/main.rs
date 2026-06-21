@@ -50,9 +50,8 @@ fn setup_calendar(config: Config) -> BookingCalendar {
                 room_number: room_number,
                 available: true,
             };
-            room_number += 1;
-
             empty_hotel.insert(room_number.to_string(), empty_room);
+            room_number += 1;
         }
     }
 
