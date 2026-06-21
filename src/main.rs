@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
-use toml::de::from_str;
+use toml;
 
 #[derive(Deserialize, Debug)]
 struct Config {
@@ -11,11 +11,11 @@ struct Config {
 #[derive(Deserialize, Debug)]
 struct Hotel {
     name: String,
-    rooms: Vec<Rooms>,
+    rooms: Vec<RoomConfig>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Rooms {
+struct RoomConfig {
     room_type: String,
     count: u32,
 }
@@ -33,35 +33,37 @@ struct BookingCalendar {
     calendar: HashMap<u32, HashMap<u32, HotelRoom>>,
 }
 
+impl BookingCalendar {
+    fn new(config: Config) -> BookingCalendar {
+        let mut room_number: u32 = 0;
+        let mut empty_hotel = HashMap::new();
+        for room in config.hotel.rooms {
+            for _ in 0..room.count {
+                let empty_room: HotelRoom = HotelRoom {
+                    room_type: room.room_type.clone(),
+                    room_number,
+                    available: true,
+                };
+                empty_hotel.insert(room_number, empty_room);
+                room_number += 1;
+            }
+        }
+
+        let mut calendar = HashMap::new();
+
+        for day_number in 0..30 {
+            calendar.insert(day_number, empty_hotel.clone());
+        }
+
+        BookingCalendar { calendar }
+    }
+}
+
 fn load_hotel() -> Config {
     // Load config from file
     let file = fs::read_to_string("src/config/hotel.toml").expect("Could not open file");
-    let hotel_config: Config = from_str(&file).unwrap();
+    let hotel_config: Config = toml::from_str(&file).unwrap();
     hotel_config
-}
-
-fn setup_calendar(config: Config) -> BookingCalendar {
-    let mut room_number: u32 = 0;
-    let mut empty_hotel = HashMap::new();
-    for room in config.hotel.rooms {
-        for _room_counter in 0..room.count {
-            let empty_room: HotelRoom = HotelRoom {
-                room_type: room.room_type.clone(),
-                room_number,
-                available: true,
-            };
-            empty_hotel.insert(room_number, empty_room);
-            room_number += 1;
-        }
-    }
-
-    let mut calendar = HashMap::new();
-
-    for day_number in 0..30 {
-        calendar.insert(day_number, empty_hotel.clone());
-    }
-
-    BookingCalendar { calendar }
 }
 
 fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &u32, n_days: &u32) {
@@ -167,7 +169,7 @@ fn read_inputs() -> (u32, u32, String) {
 
 fn main() {
     let config = load_hotel();
-    let mut calendar = setup_calendar(config);
+    let mut calendar = BookingCalendar::new(config);
 
     loop {
         // Take in user search
