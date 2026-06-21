@@ -66,16 +66,16 @@ fn load_hotel() -> Config {
     hotel_config
 }
 
-fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &u32, n_days: &u32) {
+fn allocate_room(calendar: &mut BookingCalendar, room_number: u32, start_day: u32, n_days: u32) {
     let end_day = start_day + n_days; // will need actual datetime handling in the future
 
-    for day in *start_day..end_day {
+    for day in start_day..end_day {
         // Before each booking, assert that the room is available
         let room_available: bool = calendar
             .calendar
-            .get_mut(&day)
+            .get(&day)
             .unwrap()
-            .get_mut(room_number)
+            .get(&room_number)
             .unwrap()
             .available;
 
@@ -85,15 +85,15 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
             .calendar
             .get_mut(&day)
             .unwrap()
-            .get_mut(room_number)
+            .get_mut(&room_number)
             .unwrap()
             .available = false;
 
         let room_available_after: bool = calendar
             .calendar
-            .get_mut(&day)
+            .get(&day)
             .unwrap()
-            .get_mut(room_number)
+            .get(&room_number)
             .unwrap()
             .available;
 
@@ -109,18 +109,18 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: &u32, start_day: &
 fn search_rooms(
     calendar: &BookingCalendar,
     room_type: &str,
-    start_day: &u32,
-    n_days: &u32,
+    start_day: u32,
+    n_days: u32,
 ) -> HashSet<u32> {
     let end_day = start_day + n_days; // will need actual datetime handling in the future
 
     let mut available_rooms = HashSet::new();
     // initialize available rooms with all possible room ids
-    for room_number in calendar.calendar.get(start_day).unwrap().keys() {
+    for room_number in calendar.calendar.get(&start_day).unwrap().keys() {
         available_rooms.insert(*room_number);
     }
 
-    for day in *start_day..end_day {
+    for day in start_day..end_day {
         let rooms_to_check = calendar.calendar.get(&day).unwrap();
         let mut day_available_rooms = HashSet::new();
         for key in rooms_to_check.keys() {
@@ -180,7 +180,7 @@ fn main() {
         );
 
         // Identify available rooms matching that constraint
-        let available_rooms = search_rooms(&calendar, &room_type_str, &start_day_int, &n_day_int);
+        let available_rooms = search_rooms(&calendar, &room_type_str, start_day_int, n_day_int);
         if available_rooms.is_empty() {
             println! {"No room can be assigned, try a different search"}
             continue;
@@ -192,6 +192,6 @@ fn main() {
         println!("Selected room {}", selected_room);
 
         // Update the calendar to make the selected room unavailable
-        allocate_room(&mut calendar, &selected_room, &start_day_int, &n_day_int);
+        allocate_room(&mut calendar, selected_room, start_day_int, n_day_int);
     }
 }
