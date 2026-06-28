@@ -1,138 +1,14 @@
-use rusqlite::types::Value::Null;
-use rusqlite::{Connection, Result};
-use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
-use std::fs;
+use std::collections::HashSet;
+
 use std::io;
 
-static DB_PATH: &str = "db.sqlite";
+mod calendar;
+mod config;
+mod db;
 
-#[derive(Deserialize, Debug, Clone)]
-struct Config {
-    hotel: Hotel,
-}
-#[derive(Deserialize, Debug, Clone)]
-struct Hotel {
-    name: String,
-    rooms: Vec<RoomConfig>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-struct RoomConfig {
-    room_type: String,
-    count: u32,
-}
-
-#[derive(Clone, Debug)]
-struct HotelRoom {
-    room_type: String,
-    // room_number: u32, // This is more a field needed in a db version, not here.
-    available: bool,
-}
-
-#[derive(Clone, Debug)]
-struct BookingCalendar {
-    // This is an MVP, but the rough goal is to have a lookup of date -> room_number -> availability
-    calendar: HashMap<u32, HashMap<u32, HotelRoom>>,
-}
-
-impl BookingCalendar {
-    fn new(config: Config) -> BookingCalendar {
-        let mut room_number: u32 = 0;
-        let mut empty_hotel = HashMap::new();
-        for room in config.hotel.rooms {
-            for _ in 0..room.count {
-                let empty_room: HotelRoom = HotelRoom {
-                    room_type: room.room_type.clone(),
-                    available: true,
-                };
-                empty_hotel.insert(room_number, empty_room);
-                room_number += 1;
-            }
-        }
-
-        let mut calendar = HashMap::new();
-
-        for day_number in 0..30 {
-            calendar.insert(day_number, empty_hotel.clone());
-        }
-
-        BookingCalendar { calendar }
-    }
-}
-
-/// Set up a sqlite database and return a connection to it.
-fn db_setup() -> Connection {
-    let conn = Connection::open(DB_PATH);
-
-    if conn.is_err() {
-        eprintln!("Failed to create a connection");
-        std::process::exit(0)
-    }
-
-    conn.unwrap()
-}
-
-fn build_booking_calendar(conn: &Connection, config: Config) {
-    let booking_calendar = BookingCalendar::new(config);
-
-    let booking_schema = r#"CREATE TABLE IF NOT EXISTS bookings (
-    booking_id uuid PRIMARY KEY,
-    user_id uuid NOT NULL,
-    check_in date NOT NULL,
-    check_out date NOT NULL, 
-    party_size int NOT NULL,
-    room_block_size int,
-    status string NOT NULL, 
-    metadata jsonb
-    )"#;
-
-    let calendar_schema = r#"CREATE TABLE IF NOT EXISTS calendar (
-    room_id int,
-    night_date int, -- will be a date, but an int for now
-    room_status string,
-    booking_id uuid,
-    last_updated timestamp, 
-    metadata jsonb
-    )"#;
-
-    if let Err(e) = conn.execute(booking_schema, ()) {
-        eprintln!("ERROR creating bookings: {e}");
-    }
-    if let Err(e) = conn.execute(calendar_schema, ()) {
-        eprintln!("ERROR creating calendar: {e}");
-    }
-
-    let calendar_row = r#"INSERT INTO calendar (room_id, night_date, room_status, booking_id, last_updated, metadata) VALUES (?1, ?2, ?3, ?4, ?5, ?6)"#;
-    for (day_number, hotel) in booking_calendar.calendar {
-        for (room_number, _room) in hotel {
-            // Make insert rows
-            // Use a base query and insert parameterized values.
-            if let Err(e) = conn.execute(
-                calendar_row,
-                (room_number, day_number, "available", Null, Null, Null),
-            ) {
-                eprintln!("ERROR inserting row: {e}");
-            }
-        }
-    }
-}
-
-fn build_schema() -> Connection {
-    let config = load_hotel();
-    let conn = db_setup();
-
-    build_booking_calendar(&conn, config);
-
-    conn
-}
-
-fn load_hotel() -> Config {
-    // Load config from file
-    let file = fs::read_to_string("src/config/hotel.toml").expect("Could not open file");
-    let hotel_config: Config = toml::from_str(&file).unwrap();
-    hotel_config
-}
+use calendar::BookingCalendar;
+use config::load_hotel;
+use db::{build_schema, check_schema};
 
 fn allocate_room(calendar: &mut BookingCalendar, room_number: u32, start_day: u32, n_days: u32) {
     let end_day = start_day + n_days; // will need actual datetime handling in the future
@@ -235,55 +111,6 @@ fn read_inputs() -> (u32, u32, String) {
     (start_day_int, n_day_int, room_type_str)
 }
 
-#[derive(Debug)]
-/// See schema explanation https://sqlite.org/schematab.html
-struct database_schema {
-    r#type: String,
-    name: String,
-    tbl_name: String,
-    rootpage: u32,
-    sql: String,
-}
-
-#[derive(Debug)]
-struct calendar_check {
-    record_count: u32,
-    room_count: u32,
-    date_count: u32,
-}
-
-fn check_schema(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
-    let mut database_status_statement =
-        conn.prepare("select * from sqlite_master where type='table'")?;
-    let statement_return_iterable = database_status_statement.query_map([], |row| {
-        Ok(database_schema {
-            r#type: row.get(0)?,
-            name: row.get(1)?,
-            tbl_name: row.get(2)?,
-            rootpage: row.get(3)?,
-            sql: row.get(4)?,
-        })
-    })?;
-    for row in statement_return_iterable {
-        println!("Database table: {:?}", row);
-    }
-
-    let mut check_calendar = conn.prepare(
-        "select count(*), count(distinct room_id), count(distinct night_date) from calendar",
-    )?;
-    let check_calendar_iter = check_calendar.query_map([], |row| {
-        Ok(calendar_check {
-            record_count: row.get(0)?,
-            room_count: row.get(1)?,
-            date_count: row.get(2)?,
-        })
-    })?;
-
-    for row in check_calendar_iter {
-        println!("Check calendar rows: {:?}", row);
-    }
-    Ok(())
-}
 fn main() {
     let config = load_hotel();
     println!("Welcome to {}", config.hotel.name);
