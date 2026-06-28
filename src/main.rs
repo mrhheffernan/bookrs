@@ -76,7 +76,7 @@ fn db_setup() -> Connection {
 fn build_booking_calendar(conn: &Connection, config: Config) {
     let booking_calendar = BookingCalendar::new(config);
 
-    let booking_schema = r#"CREATE TABLE bookings (
+    let booking_schema = r#"CREATE TABLE IF NOT EXISTS bookings (
     booking_id uuid PRIMARY KEY,
     user_id uuid NOT NULL,
     check_in date NOT NULL,
@@ -87,8 +87,8 @@ fn build_booking_calendar(conn: &Connection, config: Config) {
     metadata jsonb
     )"#;
 
-    let calendar_schema = r#"CREATE TABLE calendar (
-    room_id int PRIMARY KEY,
+    let calendar_schema = r#"CREATE TABLE IF NOT EXISTS calendar (
+    room_id int,
     night_date int, -- will be a date, but an int for now
     room_status string,
     booking_id uuid,
@@ -96,18 +96,24 @@ fn build_booking_calendar(conn: &Connection, config: Config) {
     metadata jsonb
     )"#;
 
-    let _ = conn.execute(booking_schema, ());
-    let _ = conn.execute(calendar_schema, ());
+    if let Err(e) = conn.execute(booking_schema, ()) {
+        eprintln!("ERROR creating bookings: {e}");
+    }
+    if let Err(e) = conn.execute(calendar_schema, ()) {
+        eprintln!("ERROR creating calendar: {e}");
+    }
 
-    let calendar_row = r#"INSERT INTO calendar (room_id, night_date, room_status, booking_id, last_updated, metadata) VALUES (?1, ?2, ?3, ?4, ?5, ?6)""#;
+    let calendar_row = r#"INSERT INTO calendar (room_id, night_date, room_status, booking_id, last_updated, metadata) VALUES (?1, ?2, ?3, ?4, ?5, ?6)"#;
     for (day_number, hotel) in booking_calendar.calendar {
         for (room_number, _room) in hotel {
             // Make insert rows
             // Use a base query and insert parameterized values.
-            let _ = conn.execute(
+            if let Err(e) = conn.execute(
                 calendar_row,
                 (room_number, day_number, "available", Null, Null, Null),
-            );
+            ) {
+                eprintln!("ERROR inserting row: {e}");
+            }
         }
     }
 }
@@ -239,6 +245,13 @@ struct database_schema {
     sql: String,
 }
 
+#[derive(Debug)]
+struct calendar_check {
+    record_count: u32,
+    room_count: u32,
+    date_count: u32,
+}
+
 fn check_schema(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
     let mut database_status_statement =
         conn.prepare("select * from sqlite_master where type='table'")?;
@@ -254,6 +267,21 @@ fn check_schema(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
     for row in statement_return_iterable {
         println!("Database table: {:?}", row);
     }
+
+    let mut check_calendar = conn.prepare(
+        "select count(*), count(distinct room_id), count(distinct night_date) from calendar",
+    )?;
+    let check_calendar_iter = check_calendar.query_map([], |row| {
+        Ok(calendar_check {
+            record_count: row.get(0)?,
+            room_count: row.get(1)?,
+            date_count: row.get(2)?,
+        })
+    })?;
+
+    for row in check_calendar_iter {
+        println!("Check calendar rows: {:?}", row);
+    }
     Ok(())
 }
 fn main() {
@@ -261,7 +289,9 @@ fn main() {
     println!("Welcome to {}", config.hotel.name);
     // db_conn is unused for now, will use this later.
     let db_conn = build_schema();
-    let _ = check_schema(&db_conn);
+    if let Err(e) = check_schema(&db_conn) {
+        eprintln!("ERROR in check_schema: {e}");
+    }
 
     let mut calendar = BookingCalendar::new(config);
 
