@@ -36,6 +36,23 @@ fn check_room_available(
     Ok(room_available)
 }
 
+/// Update a room's assignment and (TODO) insert a transaction record.
+/// Does not yet also create a room booking, which needs to be a separate action
+fn assign_room(
+    conn: &Connection,
+    room_number: u32,
+    day: u32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let query_allocate =
+        "UPDATE calendar SET room_status = 'booked' WHERE room_id = ?1 and night_date = ?2";
+    let rows_changed = conn.execute(query_allocate, (room_number, day))?;
+    if rows_changed != 1 {
+        Err("More than one row changed".into())
+    } else {
+        Ok(())
+    }
+}
+
 fn allocate_room(
     conn: &Connection,
     calendar: &mut BookingCalendar,
@@ -51,13 +68,7 @@ fn allocate_room(
 
         assert!(room_available, "Room to allocate must be available");
 
-        calendar
-            .calendar
-            .get_mut(&day)
-            .ok_or("no day found")?
-            .get_mut(&room_number)
-            .ok_or("no room found")?
-            .available = false;
+        let _ = assign_room(conn, room_number, day);
 
         let room_available_after: bool = check_room_available(conn, room_number, day)?;
 
