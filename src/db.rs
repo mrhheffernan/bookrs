@@ -29,7 +29,7 @@ fn db_setup() -> Connection {
 
     if conn.is_err() {
         eprintln!("Failed to create a connection");
-        std::process::exit(0)
+        std::process::exit(1)
     }
 
     conn.unwrap()

@@ -89,7 +89,7 @@ fn search_rooms(
     struct AvailableRoom {
         room_id: u32,
     }
-    let query_available = "SELECT * FROM calendar WHERE room_status = 'available' AND night_date = ?1 AND room_type = ?2";
+    let query_available = "SELECT room_id FROM calendar WHERE room_status = 'available' AND night_date = ?1 AND room_type = ?2";
     let mut stmt_available = conn.prepare(query_available)?;
     let iter_available = stmt_available.query_map((start_day, room_type), |row| {
         Ok(AvailableRoom {
