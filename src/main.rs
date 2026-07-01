@@ -11,7 +11,33 @@ use config::load_hotel;
 use db::{build_schema, check_schema};
 use rusqlite::Connection;
 
+/// Check to ensure a room is available
+fn check_room_available(
+    conn: &Connection,
+    room_number: u32,
+    day: u32,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut room_available = true;
+    struct RoomStatus {
+        available: bool,
+    }
+    let query_available = "SELECT COUNT(*) > 0 FROM calendar WHERE room_status = 'available' AND room_id = ?1 and night_date = ?2";
+    let mut stmt_available = conn.prepare(query_available)?;
+    let iter_available = stmt_available.query_map((room_number, day), |row| {
+        Ok(RoomStatus {
+            available: row.get(0)?,
+        })
+    })?;
+
+    for checker in iter_available {
+        room_available = room_available && checker?.available;
+    }
+
+    Ok(room_available)
+}
+
 fn allocate_room(
+    conn: &Connection,
     calendar: &mut BookingCalendar,
     room_number: u32,
     start_day: u32,
@@ -21,13 +47,7 @@ fn allocate_room(
 
     for day in start_day..end_day {
         // Before each booking, assert that the room is available
-        let room_available: bool = calendar
-            .calendar
-            .get(&day)
-            .ok_or("no day found")?
-            .get(&room_number)
-            .ok_or("no room found")?
-            .available;
+        let room_available: bool = check_room_available(conn, room_number, day)?;
 
         assert!(room_available, "Room to allocate must be available");
 
@@ -39,13 +59,7 @@ fn allocate_room(
             .ok_or("no room found")?
             .available = false;
 
-        let room_available_after: bool = calendar
-            .calendar
-            .get(&day)
-            .ok_or("no day found")?
-            .get(&room_number)
-            .ok_or("no room found")?
-            .available;
+        let room_available_after: bool = check_room_available(conn, room_number, day)?;
 
         assert!(
             !room_available_after,
@@ -162,6 +176,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Selected room {}", selected_room);
 
         // Update the calendar to make the selected room unavailable
-        allocate_room(&mut calendar, selected_room, start_day_int, n_day_int)?;
+        allocate_room(
+            &db_conn,
+            &mut calendar,
+            selected_room,
+            start_day_int,
+            n_day_int,
+        )?;
     }
 }
