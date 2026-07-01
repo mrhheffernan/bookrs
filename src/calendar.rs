@@ -5,7 +5,6 @@ use std::collections::HashMap;
 pub struct HotelRoom {
     pub room_type: String,
     // room_number: u32, // This is more a field needed in a db version, not here.
-    pub available: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -22,7 +21,6 @@ impl BookingCalendar {
             for _ in 0..room.count {
                 let empty_room: HotelRoom = HotelRoom {
                     room_type: room.room_type.clone(),
-                    available: true,
                 };
                 empty_hotel.insert(room_number, empty_room);
                 room_number += 1;
