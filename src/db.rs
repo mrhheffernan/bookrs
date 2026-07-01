@@ -35,10 +35,23 @@ fn db_setup() -> Connection {
     conn.unwrap()
 }
 
-fn build_booking_calendar(conn: &Connection, config: Config) {
+fn build_booking_calendar(
+    conn: &Connection,
+    config: Config,
+) -> Result<(), Box<dyn std::error::Error>> {
     let booking_calendar = BookingCalendar::new(config);
 
-    let booking_schema = r#"CREATE TABLE IF NOT EXISTS bookings (
+    let mut schema_exists: bool = true;
+    if let Err(e) = check_schema(conn) {
+        schema_exists = false;
+        println!("Creating database")
+    }
+
+    if schema_exists {
+        println!("Database already set up")
+        // TODO: Add function here to clear entries
+    } else {
+        let booking_schema = r#"CREATE TABLE IF NOT EXISTS bookings (
     booking_id uuid PRIMARY KEY,
     user_id uuid NOT NULL,
     check_in date NOT NULL,
@@ -49,7 +62,7 @@ fn build_booking_calendar(conn: &Connection, config: Config) {
     metadata jsonb
     )"#;
 
-    let calendar_schema = r#"CREATE TABLE IF NOT EXISTS calendar (
+        let calendar_schema = r#"CREATE TABLE IF NOT EXISTS calendar (
     room_id int,
     night_date int, -- will be a date, but an int for now
     room_type string,
@@ -59,41 +72,43 @@ fn build_booking_calendar(conn: &Connection, config: Config) {
     metadata jsonb
     )"#;
 
-    if let Err(e) = conn.execute(booking_schema, ()) {
-        eprintln!("ERROR creating bookings: {e}");
-    }
-    if let Err(e) = conn.execute(calendar_schema, ()) {
-        eprintln!("ERROR creating calendar: {e}");
-    }
+        if let Err(e) = conn.execute(booking_schema, ()) {
+            eprintln!("ERROR creating bookings: {e}");
+        }
+        if let Err(e) = conn.execute(calendar_schema, ()) {
+            eprintln!("ERROR creating calendar: {e}");
+        }
 
-    let calendar_row = r#"INSERT INTO calendar (room_id, night_date, room_type, room_status, booking_id, last_updated, metadata) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"#;
-    for (day_number, hotel) in booking_calendar.calendar {
-        for (room_number, room) in hotel {
-            // Make insert rows
-            // Use a base query and insert parameterized values.
-            if let Err(e) = conn.execute(
-                calendar_row,
-                (
-                    room_number,
-                    day_number,
-                    room.room_type,
-                    "available",
-                    Null,
-                    Null,
-                    Null,
-                ),
-            ) {
-                eprintln!("ERROR inserting row: {e}");
+        let calendar_row = r#"INSERT INTO calendar (room_id, night_date, room_type, room_status, booking_id, last_updated, metadata) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"#;
+        for (day_number, hotel) in booking_calendar.calendar {
+            for (room_number, room) in hotel {
+                // Make insert rows
+                // Use a base query and insert parameterized values.
+                if let Err(e) = conn.execute(
+                    calendar_row,
+                    (
+                        room_number,
+                        day_number,
+                        room.room_type,
+                        "available",
+                        Null,
+                        Null,
+                        Null,
+                    ),
+                ) {
+                    eprintln!("ERROR inserting row: {e}");
+                }
             }
         }
     }
+    Ok(())
 }
 
 pub fn build_schema() -> Connection {
     let config = load_hotel();
     let conn = db_setup();
 
-    build_booking_calendar(&conn, config);
+    let _ = build_booking_calendar(&conn, config);
 
     conn
 }
@@ -126,7 +141,7 @@ pub fn check_schema(conn: &Connection) -> Result<(), Box<dyn std::error::Error>>
     })?;
 
     for row in check_calendar_iter {
-        println!("Check calendar rows: {:?}", row?);
+        println!("Check calendar rows: {:?}", &row);
     }
     Ok(())
 }
