@@ -1,8 +1,8 @@
 // These are the db utils
 use crate::calendar::BookingCalendar;
 use crate::config::{Config, load_hotel};
+use rusqlite::Connection;
 use rusqlite::types::Value::Null;
-use rusqlite::{Connection, Result};
 
 static DB_PATH: &str = "db.sqlite";
 
@@ -44,7 +44,6 @@ fn build_booking_calendar(
     let mut schema_exists: bool = true;
     if let Err(_e) = check_schema(conn) {
         schema_exists = false;
-
     }
 
     if schema_exists {

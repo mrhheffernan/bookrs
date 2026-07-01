@@ -63,13 +63,11 @@ fn allocate_room(
     for day in start_day..end_day {
         // Before each booking, assert that the room is available
         let room_available: bool = check_room_available(conn, room_number, day)?;
-
         assert!(room_available, "Room to allocate must be available");
 
-        let _ = assign_room(conn, room_number, day);
+        assign_room(conn, room_number, day)?;
 
         let room_available_after: bool = check_room_available(conn, room_number, day)?;
-
         assert!(
             !room_available_after,
             "Allocated room must no longer be available"
@@ -156,7 +154,6 @@ fn read_inputs() -> Result<(u32, u32, String), Box<dyn std::error::Error>> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_hotel();
     println!("Welcome to {}", config.hotel.name);
-    // db_conn is unused for now, will use this later.
     let db_conn = build_schema();
     if let Err(e) = check_schema(&db_conn) {
         eprintln!("ERROR in check_schema: {e}");
@@ -183,11 +180,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Selected room {}", selected_room);
 
         // Update the calendar to make the selected room unavailable
-        allocate_room(
-            &db_conn,
-            selected_room,
-            start_day_int,
-            n_day_int,
-        )?;
+        allocate_room(&db_conn, selected_room, start_day_int, n_day_int)?;
     }
 }
