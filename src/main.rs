@@ -1,100 +1,73 @@
-use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
-use std::fs;
+use std::collections::HashSet;
+
 use std::io;
 
-#[derive(Deserialize, Debug)]
-struct Config {
-    hotel: Hotel,
+mod calendar;
+mod config;
+mod db;
+
+use config::load_hotel;
+use db::{build_schema, check_schema};
+use rusqlite::Connection;
+
+/// Check to ensure a room is available
+fn check_room_available(
+    conn: &Connection,
+    room_number: u32,
+    day: u32,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut room_available = true;
+    struct RoomStatus {
+        available: bool,
+    }
+    let query_available = "SELECT COUNT(*) > 0 FROM calendar WHERE room_status = 'available' AND room_id = ?1 and night_date = ?2";
+    let mut stmt_available = conn.prepare(query_available)?;
+    let iter_available = stmt_available.query_map((room_number, day), |row| {
+        Ok(RoomStatus {
+            available: row.get(0)?,
+        })
+    })?;
+
+    for checker in iter_available {
+        room_available = room_available && checker?.available;
+    }
+
+    Ok(room_available)
 }
-#[derive(Deserialize, Debug)]
-struct Hotel {
-    name: String,
-    rooms: Vec<RoomConfig>,
-}
 
-#[derive(Deserialize, Debug)]
-struct RoomConfig {
-    room_type: String,
-    count: u32,
-}
-
-#[derive(Clone, Debug)]
-struct HotelRoom {
-    room_type: String,
-    // room_number: u32, // This is more a field needed in a db version, not here.
-    available: bool,
-}
-
-#[derive(Clone, Debug)]
-struct BookingCalendar {
-    // This is an MVP, but the rough goal is to have a lookup of date -> room_number -> availability
-    calendar: HashMap<u32, HashMap<u32, HotelRoom>>,
-}
-
-impl BookingCalendar {
-    fn new(config: Config) -> BookingCalendar {
-        let mut room_number: u32 = 0;
-        let mut empty_hotel = HashMap::new();
-        for room in config.hotel.rooms {
-            for _ in 0..room.count {
-                let empty_room: HotelRoom = HotelRoom {
-                    room_type: room.room_type.clone(),
-                    available: true,
-                };
-                empty_hotel.insert(room_number, empty_room);
-                room_number += 1;
-            }
-        }
-
-        let mut calendar = HashMap::new();
-
-        for day_number in 0..30 {
-            calendar.insert(day_number, empty_hotel.clone());
-        }
-
-        BookingCalendar { calendar }
+/// Update a room's assignment and (TODO) insert a transaction record.
+/// Does not yet also create a room booking, which needs to be a separate action
+fn assign_room(
+    conn: &Connection,
+    room_number: u32,
+    day: u32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let query_allocate =
+        "UPDATE calendar SET room_status = 'booked' WHERE room_id = ?1 and night_date = ?2";
+    let rows_changed = conn.execute(query_allocate, (room_number, day))?;
+    if rows_changed != 1 {
+        Err("More than one row changed".into())
+    } else {
+        Ok(())
     }
 }
 
-fn load_hotel() -> Config {
-    // Load config from file
-    let file = fs::read_to_string("src/config/hotel.toml").expect("Could not open file");
-    let hotel_config: Config = toml::from_str(&file).unwrap();
-    hotel_config
-}
-
-fn allocate_room(calendar: &mut BookingCalendar, room_number: u32, start_day: u32, n_days: u32) {
+fn allocate_room(
+    conn: &Connection,
+    room_number: u32,
+    start_day: u32,
+    n_days: u32,
+) -> Result<(), Box<dyn std::error::Error>> {
     let end_day = start_day + n_days; // will need actual datetime handling in the future
 
     for day in start_day..end_day {
         // Before each booking, assert that the room is available
-        let room_available: bool = calendar
-            .calendar
-            .get(&day)
-            .unwrap()
-            .get(&room_number)
-            .unwrap()
-            .available;
-
+        let room_available: bool = check_room_available(conn, room_number, day)?;
         assert!(room_available, "Room to allocate must be available");
 
-        calendar
-            .calendar
-            .get_mut(&day)
-            .unwrap()
-            .get_mut(&room_number)
-            .unwrap()
-            .available = false;
+        assign_room(conn, room_number, day)?;
 
-        let room_available_after: bool = calendar
-            .calendar
-            .get(&day)
-            .unwrap()
-            .get(&room_number)
-            .unwrap()
-            .available;
-
+        let room_available_after: bool = check_room_available(conn, room_number, day)?;
         assert!(
             !room_available_after,
             "Allocated room must no longer be available"
@@ -102,47 +75,60 @@ fn allocate_room(calendar: &mut BookingCalendar, room_number: u32, start_day: u3
     }
 
     // TODO: Add things like a booking ID to the room, to come in the sqlite database implementation
+    Ok(())
 }
 
 fn search_rooms(
-    calendar: &BookingCalendar,
+    conn: &Connection,
     room_type: &str,
     start_day: u32,
     n_days: u32,
-) -> HashSet<u32> {
+) -> Result<HashSet<u32>, Box<dyn std::error::Error>> {
     let end_day = start_day + n_days; // will need actual datetime handling in the future
 
+    struct AvailableRoom {
+        room_id: u32,
+    }
+    let query_available = "SELECT room_id FROM calendar WHERE room_status = 'available' AND night_date = ?1 AND room_type = ?2";
+    let mut stmt_available = conn.prepare(query_available)?;
+    let iter_available = stmt_available.query_map((start_day, room_type), |row| {
+        Ok(AvailableRoom {
+            room_id: row.get(0)?,
+        })
+    })?;
+
     let mut available_rooms = HashSet::new();
-    // initialize available rooms with all possible room ids
-    for room_number in calendar.calendar.get(&start_day).unwrap().keys() {
-        available_rooms.insert(*room_number);
+    for row in iter_available {
+        available_rooms.insert(row?.room_id);
     }
 
     for day in start_day..end_day {
-        let rooms_to_check = calendar.calendar.get(&day).unwrap();
-        let mut day_available_rooms = HashSet::new();
-        for key in rooms_to_check.keys() {
-            let room_to_check = rooms_to_check.get(key).unwrap();
+        let iter_available = stmt_available.query_map((day, room_type), |row| {
+            Ok(AvailableRoom {
+                room_id: row.get(0)?,
+            })
+        })?;
 
-            if room_to_check.available && room_to_check.room_type == *room_type {
-                day_available_rooms.insert(*key);
-            }
+        let mut day_available_rooms = HashSet::new();
+        for room in iter_available {
+            day_available_rooms.insert(room?.room_id);
         }
+
         available_rooms = available_rooms
             .intersection(&day_available_rooms)
             .cloned()
             .collect::<HashSet<_>>();
     }
-    available_rooms
+    Ok(available_rooms)
 }
 
-fn select_room(available_rooms: &HashSet<u32>) -> u32 {
+fn select_room(available_rooms: &HashSet<u32>) -> Result<u32, Box<dyn std::error::Error>> {
     // Choose an available room; really uses "arbitrary order" (see HashSet docs) as a sub for randomness.
-    let selected_room = available_rooms.iter().next().unwrap();
-    *selected_room
+    let selected_room = available_rooms.iter().next().ok_or("no available rooms")?;
+    Ok(*selected_room)
 }
 
-fn read_inputs() -> (u32, u32, String) {
+fn read_inputs() -> Result<(u32, u32, String), Box<dyn std::error::Error>> {
     println!("Starting day?");
     let mut start_day = String::new();
     let stdin = io::stdin();
@@ -159,27 +145,30 @@ fn read_inputs() -> (u32, u32, String) {
     // TODO: Add validation of room type against the config, or rather present some options in this prompt
     // so a user cannot mistype a room type string
 
-    let start_day_int = start_day.trim_end().parse::<u32>().unwrap();
-    let n_day_int = n_day.trim_end().parse::<u32>().unwrap();
+    let start_day_int = start_day.trim_end().parse::<u32>()?;
+    let n_day_int = n_day.trim_end().parse::<u32>()?;
 
-    (start_day_int, n_day_int, room_type_str)
+    Ok((start_day_int, n_day_int, room_type_str))
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_hotel();
     println!("Welcome to {}", config.hotel.name);
-    let mut calendar = BookingCalendar::new(config);
+    let db_conn = build_schema();
+    if let Err(e) = check_schema(&db_conn) {
+        eprintln!("ERROR in check_schema: {e}");
+    }
 
     loop {
         // Take in user search
-        let (start_day_int, n_day_int, room_type_str) = read_inputs();
+        let (start_day_int, n_day_int, room_type_str) = read_inputs()?;
         println!(
             "Searching for {} room for {} days beginning on day {}",
             room_type_str, n_day_int, start_day_int
         );
 
         // Identify available rooms matching that constraint
-        let available_rooms = search_rooms(&calendar, &room_type_str, start_day_int, n_day_int);
+        let available_rooms = search_rooms(&db_conn, &room_type_str, start_day_int, n_day_int)?;
         if available_rooms.is_empty() {
             println! {"No room can be assigned, try a different search"}
             continue;
@@ -187,10 +176,10 @@ fn main() {
         println!("Available rooms are {:?}", available_rooms);
 
         // Select a room
-        let selected_room = select_room(&available_rooms);
+        let selected_room = select_room(&available_rooms)?;
         println!("Selected room {}", selected_room);
 
         // Update the calendar to make the selected room unavailable
-        allocate_room(&mut calendar, selected_room, start_day_int, n_day_int);
+        allocate_room(&db_conn, selected_room, start_day_int, n_day_int)?;
     }
 }
