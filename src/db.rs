@@ -42,15 +42,16 @@ fn build_booking_calendar(
     let booking_calendar = BookingCalendar::new(config);
 
     let mut schema_exists: bool = true;
-    if let Err(e) = check_schema(conn) {
+    if let Err(_e) = check_schema(conn) {
         schema_exists = false;
-        println!("Creating database")
+
     }
 
     if schema_exists {
         println!("Database already set up")
         // TODO: Add function here to clear entries
     } else {
+        println!("Creating database");
         let booking_schema = r#"CREATE TABLE IF NOT EXISTS bookings (
     booking_id uuid PRIMARY KEY,
     user_id uuid NOT NULL,

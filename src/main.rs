@@ -6,7 +6,6 @@ mod calendar;
 mod config;
 mod db;
 
-use calendar::BookingCalendar;
 use config::load_hotel;
 use db::{build_schema, check_schema};
 use rusqlite::Connection;
@@ -55,7 +54,6 @@ fn assign_room(
 
 fn allocate_room(
     conn: &Connection,
-    calendar: &mut BookingCalendar,
     room_number: u32,
     start_day: u32,
     n_days: u32,
@@ -164,8 +162,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("ERROR in check_schema: {e}");
     }
 
-    let mut calendar = BookingCalendar::new(config);
-
     loop {
         // Take in user search
         let (start_day_int, n_day_int, room_type_str) = read_inputs()?;
@@ -189,7 +185,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Update the calendar to make the selected room unavailable
         allocate_room(
             &db_conn,
-            &mut calendar,
             selected_room,
             start_day_int,
             n_day_int,
