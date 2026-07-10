@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Stdin};
 
 use uuid::Uuid;
 
@@ -17,29 +17,29 @@ fn quit(s: &str) {
     }
 }
 
+fn read_input(stdin: &Stdin) -> String {
+    let mut input = String::new();
+    let _ = stdin.read_line(&mut input);
+    quit(&input);
+    input.trim_end().to_string()
+}
+
 fn read_inputs() -> Result<(u32, u32, String), Box<dyn std::error::Error>> {
     println!("Starting day?");
-    let mut start_day = String::new();
     let stdin = io::stdin();
-    let _ = stdin.read_line(&mut start_day);
-    quit(&start_day);
+    let start_day = read_input(&stdin);
 
     println!("Number of days?");
-    let mut n_day = String::new();
-    let _ = stdin.read_line(&mut n_day);
-    quit(&n_day);
+    let n_day = read_input(&stdin);
 
     println!("Room type?");
-    let mut room_type_str = String::new();
+    let room_type_str = read_input(&stdin);
     // TODO: Add a query for available room types
-    let _ = stdin.read_line(&mut room_type_str);
-    room_type_str = room_type_str.trim_end().to_string();
-    quit(&room_type_str);
     // TODO: Add validation of room type against the config, or rather present some options in this prompt
     // so a user cannot mistype a room type string
 
-    let start_day_int = start_day.trim_end().parse::<u32>()?;
-    let n_day_int = n_day.trim_end().parse::<u32>()?;
+    let start_day_int = start_day.parse::<u32>()?;
+    let n_day_int = n_day.parse::<u32>()?;
 
     Ok((start_day_int, n_day_int, room_type_str))
 }
