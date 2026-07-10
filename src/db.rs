@@ -1,4 +1,3 @@
-// These are the db utils
 use crate::calendar::BookingCalendar;
 use crate::config::{Config, load_hotel};
 use rusqlite::Connection;
@@ -141,7 +140,7 @@ pub fn check_schema(conn: &Connection) -> Result<(), Box<dyn std::error::Error>>
     })?;
 
     for row in check_calendar_iter {
-        println!("Check calendar rows: {:?}", &row);
+        println!("Check calendar rows: {:?}", row);
     }
     Ok(())
 }

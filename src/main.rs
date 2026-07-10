@@ -128,20 +128,29 @@ fn select_room(available_rooms: &HashSet<u32>) -> Result<u32, Box<dyn std::error
     Ok(*selected_room)
 }
 
+fn quit(s: &str) {
+    if *s.to_lowercase().trim_end() == *"quit" {
+        std::process::exit(0)
+    }
+}
+
 fn read_inputs() -> Result<(u32, u32, String), Box<dyn std::error::Error>> {
     println!("Starting day?");
     let mut start_day = String::new();
     let stdin = io::stdin();
     let _ = stdin.read_line(&mut start_day);
+    quit(&start_day);
 
     println!("Number of days?");
     let mut n_day = String::new();
     let _ = stdin.read_line(&mut n_day);
+    quit(&n_day);
 
     println!("Room type?");
     let mut room_type_str = String::new();
     let _ = stdin.read_line(&mut room_type_str);
     room_type_str = room_type_str.trim_end().to_string();
+    quit(&room_type_str);
     // TODO: Add validation of room type against the config, or rather present some options in this prompt
     // so a user cannot mistype a room type string
 
