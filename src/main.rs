@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use std::io;
 
+use uuid::Uuid;
+
 mod calendar;
 mod config;
 mod db;
@@ -41,10 +43,10 @@ fn assign_room(
     conn: &Connection,
     room_number: u32,
     day: u32,
+    booking_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let query_allocate =
-        "UPDATE calendar SET room_status = 'booked' WHERE room_id = ?1 and night_date = ?2";
-    let rows_changed = conn.execute(query_allocate, (room_number, day))?;
+    let query_allocate = "UPDATE calendar SET room_status = 'booked' WHERE room_id = ?1 and night_date = ?2 and booking_id = ?3";
+    let rows_changed = conn.execute(query_allocate, (room_number, day, booking_id))?;
     if rows_changed != 1 {
         Err("More than one row changed".into())
     } else {
@@ -57,6 +59,7 @@ fn allocate_room(
     room_number: u32,
     start_day: u32,
     n_days: u32,
+    booking_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let end_day = start_day + n_days; // will need actual datetime handling in the future
 
@@ -65,7 +68,7 @@ fn allocate_room(
         let room_available: bool = check_room_available(conn, room_number, day)?;
         assert!(room_available, "Room to allocate must be available");
 
-        assign_room(conn, room_number, day)?;
+        assign_room(conn, room_number, day, booking_id)?;
 
         let room_available_after: bool = check_room_available(conn, room_number, day)?;
         assert!(
@@ -73,8 +76,6 @@ fn allocate_room(
             "Allocated room must no longer be available"
         );
     }
-
-    // TODO: Add things like a booking ID to the room, to come in the sqlite database implementation
     Ok(())
 }
 
@@ -148,6 +149,7 @@ fn read_inputs() -> Result<(u32, u32, String), Box<dyn std::error::Error>> {
 
     println!("Room type?");
     let mut room_type_str = String::new();
+    // TODO: Add a query for available room types
     let _ = stdin.read_line(&mut room_type_str);
     room_type_str = room_type_str.trim_end().to_string();
     quit(&room_type_str);
@@ -158,6 +160,10 @@ fn read_inputs() -> Result<(u32, u32, String), Box<dyn std::error::Error>> {
     let n_day_int = n_day.trim_end().parse::<u32>()?;
 
     Ok((start_day_int, n_day_int, room_type_str))
+}
+
+fn generate_booking_id() -> String {
+    Uuid::new_v4()
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -188,7 +194,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let selected_room = select_room(&available_rooms)?;
         println!("Selected room {}", selected_room);
 
+        // Create a booking ID
+        let booking_id = generate_booking_id();
         // Update the calendar to make the selected room unavailable
-        allocate_room(&db_conn, selected_room, start_day_int, n_day_int)?;
+        allocate_room(
+            &db_conn,
+            selected_room,
+            start_day_int,
+            n_day_int,
+            &booking_id,
+        )?;
     }
 }
