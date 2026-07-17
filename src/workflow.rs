@@ -53,8 +53,9 @@ pub fn booking_new(
     party_size: &u32,
     room_block_size: &u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Update the bookings calendar, may want to do this in a separate function
-    let query_booking = r#"INSERT INTO bookings (booking_id, user_id, check_in, check_out, party_size, room_block_size, status, metadata) VALUES ('?1', '?2', ?3, ?4, ?5, ?6, 'PENDING', '{"key": "value"}');"#;
+    let query_booking = r#"INSERT INTO bookings 
+    (booking_id, user_id, check_in, check_out, party_size, room_block_size, status, metadata) 
+    VALUES ('?1', '?2', ?3, ?4, ?5, ?6, 'PENDING', '{"key": "value"}');"#;
     let booking_rows_changed = conn.execute(
         query_booking,
         (
