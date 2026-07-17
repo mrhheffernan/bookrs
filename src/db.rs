@@ -1,4 +1,3 @@
-// These are the db utils
 use crate::calendar::BookingCalendar;
 use crate::config::{Config, load_hotel};
 use rusqlite::Connection;
@@ -47,10 +46,10 @@ fn build_booking_calendar(
     }
 
     if schema_exists {
-        println!("Database already set up")
+        println!("Booking Calendar already set up")
         // TODO: Add function here to clear entries
     } else {
-        println!("Creating database");
+        println!("Creating Booking Calendar");
         let booking_schema = r#"CREATE TABLE IF NOT EXISTS bookings (
     booking_id uuid PRIMARY KEY,
     user_id uuid NOT NULL,
@@ -141,7 +140,7 @@ pub fn check_schema(conn: &Connection) -> Result<(), Box<dyn std::error::Error>>
     })?;
 
     for row in check_calendar_iter {
-        println!("Check calendar rows: {:?}", &row);
+        println!("Check calendar rows: {:?}", row);
     }
     Ok(())
 }
