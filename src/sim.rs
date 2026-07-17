@@ -5,6 +5,8 @@
 // We mostly care about the fraction of allocated rooms rather than the fraction of bookings accepted. That's a UX KPI, not one that makes the business money.
 // Need to define the simulated entrypoint as well, data format will be key to track.
 
+use polars::prelude::*;
+
 mod calendar;
 mod config;
 mod db;
@@ -14,4 +16,37 @@ use config::load_hotel;
 use db::{build_schema, check_schema};
 use workflow::{allocate_room, search_rooms, select_room};
 
-fn main() {}
+fn load_bookings() -> Result<DataFrame, Box<dyn std::error::Error>> {
+    let path: String = format!(
+        "{}/src/config/hotel_bookings.csv",
+        std::env::var("CARGO_MANIFEST_DIR").unwrap()
+    );
+
+    // load csv to dataframe
+    let df: DataFrame = CsvReadOptions::default()
+        .with_ignore_errors(true) // Ignore some Null entires
+        .try_into_reader_with_file_path(Some(path.into()))?
+        .finish()?;
+
+    // filter out entries other than the City Hotel, so we focus on one property
+    let df_city_hotel = df
+        .lazy() // Need a lazy frame here to perform a condensed filter expression
+        .filter(col("hotel").eq(lit("City Hotel")))
+        .collect()?;
+
+    return Ok(df_city_hotel);
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // load bookings
+    let df = load_bookings()?;
+    println!("{df}");
+    // loop over workflow:
+
+    // 1. search rooms matching criteria
+
+    // 2. Select a matching room
+
+    // 3. Allocate room
+    Ok(())
+}
