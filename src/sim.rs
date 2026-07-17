@@ -29,17 +29,19 @@ fn load_bookings() -> Result<DataFrame, Box<dyn std::error::Error>> {
         .finish()?;
 
     // filter out entries other than the City Hotel, so we focus on one property
-    let df_city_hotel = df
+    let df_city_hotel: DataFrame = df
         .lazy() // Need a lazy frame here to perform a condensed filter expression
         .filter(col("hotel").eq(lit("City Hotel")))
         .collect()?;
+
+    // May need to further filter based on bookings or do additional processing to process booking requests in order
 
     return Ok(df_city_hotel);
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // load bookings
-    let df = load_bookings()?;
+    let df: DataFrame = load_bookings()?;
     println!("{df}");
     // loop over workflow:
 
