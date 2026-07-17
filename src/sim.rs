@@ -36,7 +36,7 @@ fn load_bookings() -> Result<DataFrame, Box<dyn std::error::Error>> {
 
     // May need to further filter based on bookings or do additional processing to process booking requests in order
 
-    return Ok(df_city_hotel);
+    Ok(df_city_hotel)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
